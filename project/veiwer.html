@@ -1,0 +1,78 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>SafePath Viewer (Leaflet + OSM)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <style>
+    body { margin:0; font-family: Arial, Helvetica, sans-serif; }
+    #map { width:100%; height:75vh; }
+    .controls { padding:8px; display:flex; gap:8px; align-items:center; background:#f5f5f5; }
+    .routes { padding:10px; height:22vh; overflow:auto; background:#fff; }
+    .route-card { padding:8px; margin-bottom:8px; border-left:6px solid #ddd; background:#fafafa; border-radius:6px;}
+    .best { border-left-color: #d32f2f; }
+    .alt1 { border-left-color: darkorange; }
+    .alt2 { border-left-color: gold; }
+    button { padding:6px 10px; border-radius:4px; border:none; background:#1976d2; color:white; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <button id="refresh">Load path.json</button>
+    <small style="margin-left:12px;color:#333">This viewer reads <code>path.json</code> in the same folder and draws routes on OpenStreetMap tiles.</small>
+  </div>
+  <div id="map"></div>
+  <div class="routes" id="routesPane"><strong>Routes will appear here after loading path.json</strong></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  const map = L.map('map').setView([12.97,77.60], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' }).addTo(map);
+
+  const routeLayer = L.layerGroup().addTo(map);
+  const colors = ['#d32f2f','darkorange','gold','#5b9bd5','#60a83e'];
+
+  async function loadAndDraw(){
+    routeLayer.clearLayers();
+    try {
+      const res = await fetch('../path.json');
+      if(!res.ok) { document.getElementById('routesPane').innerText = 'path.json not found or not accessible.'; return;}
+      const j = await res.json();
+      const routes = j.routes || [];
+      if(routes.length===0) { document.getElementById('routesPane').innerText = 'No routes in path.json'; return; }
+      let html = '';
+      for(let i=0;i<routes.length;i++){
+        const rt = routes[i];
+        const coords = rt.points.map(p => [p.lat, p.lon]);
+        const poly = L.polyline(coords, {color: colors[i%colors.length], weight: (i===0?6:4), opacity:0.95}).addTo(routeLayer);
+        // fit to first route
+        if(i===0) map.fitBounds(poly.getBounds().pad(0.3));
+        // markers at nodes
+        for(let k=0;k<coords.length;k++){
+          const mk = L.circleMarker(coords[k], {radius:4, color: colors[i%colors.length], fillOpacity:1}).addTo(routeLayer);
+          if(k===0) mk.bindPopup('Start: '+rt.points[k].name);
+          if(k===coords.length-1) mk.bindPopup('End: '+rt.points[k].name);
+        }
+        html += `<div class="route-card ${i===0?'best': i===1?'alt1':i===2?'alt2':''}">`;
+        html += `<strong>${i===0? 'BEST' : 'Alternative #' + i}</strong><br>`;
+        html += `Distance: <b>${(rt.distance_m/1000).toFixed(2)} km</b> • ETA: <b>${rt.duration_min} min</b> • Hops: <b>${rt.hops}</b><br>`;
+        // show nodes short
+        const names = rt.points.map(p => p.name);
+        html += `<small>${names.join(' → ')}</small>`;
+        html += `</div>`;
+      }
+      document.getElementById('routesPane').innerHTML = html;
+    } catch (err) {
+      console.error(err);
+      document.getElementById('routesPane').innerText = 'Error loading or parsing path.json: ' + err;
+    }
+  }
+
+  document.getElementById('refresh').addEventListener('click', loadAndDraw);
+
+  // auto load on open
+  loadAndDraw();
+</script>
+</body>
+</html>

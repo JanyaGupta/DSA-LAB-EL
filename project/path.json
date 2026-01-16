@@ -1,0 +1,25 @@
+{
+  "routes": [
+    {
+      "id": 0,
+      "distance_m": 1100,
+      "duration_min": 1,
+      "hops": 1,
+      "points": [
+        {"name":"MG Road","lat":12.974000,"lon":77.606600},
+        {"name":"Ulsoor","lat":12.978000,"lon":77.619000}
+      ]
+    },
+    {
+      "id": 1,
+      "distance_m": 4100.000000,
+      "duration_min": 5,
+      "hops": 2,
+      "points": [
+        {"name":"MG Road","lat":12.974000,"lon":77.606600},
+        {"name":"Majestic","lat":12.976300,"lon":77.571300},
+        {"name":"Ulsoor","lat":12.978000,"lon":77.619000}
+      ]
+    }
+  ]
+}
